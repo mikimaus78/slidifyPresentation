@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Baseball Photo Auction Sales Predictor</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Baseball Photo Auction Sales Predictor">
+  <meta name="author" content="Haris Berbic">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Baseball Photo Auction Sales Predictor</h1>
+    <h2>using Linear Model</h2>
+    <p>Haris Berbic<br/>Teacher</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Introduction</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>For the Data Science Specialization, Course Developing Data Project we have task to do some predictive application.
+I choose to build Linear model to predict Sale Price for Photo Auction on Ebay for specific player. 
+User may select one of the feature from player and minimum bids build  Linear model.
+The result is prediction price of player photos on auction.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Data summary</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Application needs 3 cvs files:</p>
+
+<ol>
+<li><p>players.cvs with fields:
+PersonPriceID, PersonID, CategoryName, ListedCount, AvgPrice, MaxPrice, MinPrice, SaleCount, GradedCount, GradedSaleCount, GradedAvgPrice, AuctionCount, AuctionSaleCount, AuctionAvgPrice, AuctionMedianPrice, FirstName, LastName, PlayerName, DeceasedYear, ItemAuctionSellPercent</p></li>
+<li><p>sellers.cvs with fields:
+SellerID, SellerName, ListingCount, SaleCount, AuctionCount, AuctionSaleCount, SellerSaleAvgPriceRatio, SellerAvg, SellerItemAvg, SellerClosePercent</p></li>
+<li><p>Photos.cvs with fields:
+Price, StartingBidPercent, StartingBid, AvgPrice, QuantitySold, ItemAuctionSellPercent, Authenticated, SellerSaleAvgPriceRatio, IsHOF, AuctionCount, SellerAuctionSaleCount, PriceBuckets, AuctionMedianPrice</p></li>
+</ol>
+
+<p>4.LogisticTrainingSet.csv with fieds:
+QuantitySold, Price, StartingBidPercent, SellerName, SellerClosePercent, Category, PersonID, StartingBid, AvgPrice, ItemAuctionSellPercent, AuctionSaleCount, AuctionMedianPrice</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Loading and displaying player data to end user</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>We use standard read.csv function to load data into memory</p>
+
+<pre><code class="r">players.data &lt;- read.csv(file=&#39;players.csv&#39;, sep=&#39;,&#39;, h=T)
+</code></pre>
+
+<p>We subset data based on player name and only for Photos</p>
+
+<pre><code class="r">player.data&lt;-subset(players.data, PlayerName == input$player &amp; CategoryName == &#39;Photos&#39;)
+</code></pre>
+
+<p>We display player data </p>
+
+<pre><code class="r">output.data &lt;- player.data [c(&quot;PlayerName&quot;,&quot;AuctionCount&quot;, &quot;AuctionSaleCount&quot;,&quot;AuctionAvgPrice&quot;,&quot;AuctionMedianPrice&quot;,&quot;MaxPrice&quot;,&quot;MinPrice&quot;)]
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Loading data for calculation</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>First we load data in order to make calculation</p>
+
+<pre><code class="r">players.data &lt;- read.csv(file=&#39;players.csv&#39;, sep=&#39;,&#39;, h=T)
+player.data&lt;-subset(players.data, PlayerName == input$player &amp; CategoryName == &#39;Photos&#39;)
+sellers.data &lt;- read.csv(file=&#39;sellers.csv&#39;, sep=&#39;,&#39;, h=T)
+seller.data&lt;-subset(sellers.data, SellerName == &#39;probstein123&#39;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Building test frame</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">test.data &lt;- data.frame(AuctionMedianPrice = numeric(N),
+                            AvgPrice = numeric(N),
+                            ItemAuctionSellPercent = numeric(N),
+                            StartingBidPercent = numeric(N),
+                            StartingBid = numeric(N),
+                            Authenticated = numeric(N),
+                            SellerSaleAvgPriceRatio = numeric(N),
+                            IsHOF = numeric(N),
+                            AuctionCount = numeric(N),
+                            SellerAuctionSaleCount = numeric(N))
+
+test.data[1, ] &lt;- c(AuctionMedianPrice, AvgPrice, ItemAuctionSellPercent, 
+                    StartingBidPercent, StartingBid, Authenticated, 
+                    SellerSaleAvgPriceRatio, IsHOF, AuctionCount, 
+                    SellerAuctionSaleCount)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Loading train data</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Then we load train data</p>
+
+<pre><code class="r">data.file.name &lt;- &#39;Photos.csv&#39; 
+train.raw.data  &lt;- read.csv(file=data.file.name, sep=&#39;,&#39;, h=T)
+</code></pre>
+
+<p>And optimize set of features</p>
+
+<pre><code class="r">train.data &lt;- train.raw.data[c(&quot;AuctionMedianPrice&quot;, &quot;Price&quot;, &quot;AvgPrice&quot;, 
+            &quot;ItemAuctionSellPercent&quot;, &quot;StartingBidPercent&quot;, &quot;StartingBid&quot;, 
+            &quot;Authenticated&quot;, &quot;SellerSaleAvgPriceRatio&quot;, &quot;IsHOF&quot;, 
+            &quot;AuctionCount&quot;, &quot;SellerAuctionSaleCount&quot;)]
+train.data$Price=log(train.data$Price)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Prediction</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>We crate model using Recursive Partitioning and Regression Trees</p>
+
+<pre><code class="r">tree&lt;-rpart(Price ~.,data=train.data)
+predCart&lt;-predict(tree, test.data, type = &quot;vector&quot;)
+prediction = exp(predCart)
+</code></pre>
+
+<p>and display it to the end user</p>
+
+<pre><code class="r">paste(&quot;Predicted Sale Price : $&quot;, toString(round(prediction,digits=2)))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Thanks for watching!</h2>
+  </hgroup>
+  <article data-timings="">
+    
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Introduction'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Data summary'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Loading and displaying player data to end user'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Loading data for calculation'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Building test frame'>
+         5
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=6 title='Loading train data'>
+         6
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=7 title='Prediction'>
+         7
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=8 title='Thanks for watching!'>
+         8
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>

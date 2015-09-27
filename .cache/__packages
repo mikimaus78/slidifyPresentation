@@ -1,0 +1,10 @@
+base
+devtools
+slidify
+shiny
+survival
+lattice
+gbm
+rpart
+rpart.plot
+FNN
